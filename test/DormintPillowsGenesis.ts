@@ -11,11 +11,11 @@ describe("DormintPillowsGenesis", function () {
     const mintPrice = ethers.utils.parseEther("0.1");
 
     const DormintPillowsGenesis = await ethers.getContractFactory("DormintPillowsGenesis");
-    const nft = <DormintPillowsGenesis>(await upgrades.deployProxy(DormintPillowsGenesis, [mintPrice]));
+    const nft = <DormintPillowsGenesis>(await upgrades.deployProxy(DormintPillowsGenesis, [
+      governor.address,
+      mintPrice
+    ]));
     await nft.deployed();
-
-    // Setup
-    await nft.setGovernor(governor.address);
 
     return {
       owner, governor, buyer,
@@ -32,13 +32,16 @@ describe("DormintPillowsGenesis", function () {
         nft
       } = await loadFixture(prepare);
 
+      const DEFAULT_ADMIN_ROLE = await nft.DEFAULT_ADMIN_ROLE();
+
       expect(await nft.name()).to.equal("Dormint Pillows Genesis");
       expect(await nft.symbol()).to.equal("DPG");
       expect(await nft.baseURI()).to.equal("https://api.dormint.io/genesis/");
       expect(await nft.contractURI()).to.equal("https://api.dormint.io/genesis/contract");
 
       expect(await nft.owner()).to.equal(owner.address);
-      expect(await nft.governor()).to.equal(governor.address);
+      expect(await nft.hasRole(DEFAULT_ADMIN_ROLE, governor.address)).to.equal(true);
+      expect(await nft.hasRole(DEFAULT_ADMIN_ROLE, owner.address)).to.equal(false);
 
       expect(await nft.mintPrice()).to.equal(mintPrice);
     });
