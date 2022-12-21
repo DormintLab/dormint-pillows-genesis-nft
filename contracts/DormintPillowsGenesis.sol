@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
 import "@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/VRFV2WrapperInterface.sol";
@@ -16,6 +17,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/VRFV2WrapperInterface.sol";
 /// @custom:security-contact info@domint.io
 contract DormintPillowsGenesis is Initializable, ERC721Upgradeable, ERC721EnumerableUpgradeable, ERC721RoyaltyUpgradeable, OwnableUpgradeable, AccessControlUpgradeable {
     using CountersUpgradeable for CountersUpgradeable.Counter;
+    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
     /** CONSTANTS */
     uint256 public constant ROYALTY_FEE_BASE = 10000;
@@ -26,11 +28,14 @@ contract DormintPillowsGenesis is Initializable, ERC721Upgradeable, ERC721Enumer
     // NFT Logic
     CountersUpgradeable.Counter private _tokenIdCounter;
     string public baseURI;
+
     // Purchasing
     uint256 public mintPrice;
+
     // Whitelists
-    // TODO: bool public whitelistOnly;
-    // TODO: Whitelist 
+    bool public whitelistOnly;
+    EnumerableSetUpgradeable.AddressSet private _whitelisted;
+
     // Chainlink VRF
     LinkTokenInterface internal LINK;
     VRFV2WrapperInterface internal VRF_V2_WRAPPER;
@@ -58,8 +63,10 @@ contract DormintPillowsGenesis is Initializable, ERC721Upgradeable, ERC721Enumer
 
         _grantRole(DEFAULT_ADMIN_ROLE, governor_);
 
-        mintPrice = mintPrice_;
         baseURI = "https://api.dormint.io/genesis/";
+        mintPrice = mintPrice_;
+
+        whitelistOnly = true;
 
         LINK = LinkTokenInterface(link_);
         VRF_V2_WRAPPER = VRFV2WrapperInterface(vrfV2Wrapper_);
@@ -74,33 +81,52 @@ contract DormintPillowsGenesis is Initializable, ERC721Upgradeable, ERC721Enumer
         return string(abi.encodePacked(_baseURI(), "contract"));
     }
 
+    function isWhitelisted(address user_) external view returns (bool) {
+        return _whitelisted.contains(user_);
+    }
+
     /** PUBLIC / EXTERNAL SETTERS */
-    function setMintPrice(uint256 mintPrice_) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setMintPrice(uint256 mintPrice_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         mintPrice = mintPrice_;
     }
 
-    function setOwner(address newOwner_) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setOwner(address newOwner_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(newOwner_ != address(0), "Ownable: new owner is the zero address");
         _transferOwnership(newOwner_);
     }
 
-    function setBaseURI(string memory baseURI_) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setBaseURI(string memory baseURI_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         baseURI = baseURI_;
     }
 
-    function setRoyaltyInfo(address receiver_, uint96 feeNumerator_) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setRoyaltyInfo(address receiver_, uint96 feeNumerator_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setDefaultRoyalty(receiver_, feeNumerator_);
+    }
+
+    function setWhitelistOnly(bool whitelistOnly_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        whitelistOnly = whitelistOnly_;
+    }
+
+    function addWhitelisted(address[] memory users_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        for (uint i = 0; i < users_.length; i++) {
+            _whitelisted.add(users_[i]);
+        }
+    }
+
+    function removeWhitelisted(address[] memory users_) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        for (uint i = 0; i < users_.length; i++) {
+            _whitelisted.remove(users_[i]);
+        }
     }
 
     receive() external payable {}
 
-    function mint(address receiver_, uint256 quantity_) public payable {
+    function mint(address receiver_, uint256 quantity_) external payable {
         uint256 totalToPay = quantity_ * mintPrice;
 
         require(totalSupply() + quantity_ <= TOTAL_TO_MINT, "Quantity exceeds allowed");
         require(msg.value >= totalToPay, "Not enough tokens for purchase");
-
-        // TODO: Check whitelists
+        require(!whitelistOnly || _whitelisted.contains(_msgSender()), "Only whitelisted mint allowed now");
 
         for (uint256 index = 0; index < quantity_; index++) {
             _tokenIdCounter.increment();
@@ -109,18 +135,18 @@ contract DormintPillowsGenesis is Initializable, ERC721Upgradeable, ERC721Enumer
         }
     }
 
-    function withdraw() public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function withdraw() external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 balance = address(this).balance;
         payable(_msgSender()).transfer(balance);
     }
 
-    function rescueFunds(address token_) public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function rescueFunds(address token_) external onlyRole(DEFAULT_ADMIN_ROLE) {
         IERC20Upgradeable token = IERC20Upgradeable(token_);
         uint256 balance = token.balanceOf(address(this));
         token.transfer(_msgSender(), balance);
     }
 
-    function requestRandomness() public onlyRole(DEFAULT_ADMIN_ROLE) {
+    function requestRandomness() external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(randomWord == 0, "Randomness was already persisted");
         uint32 callbackGasLimit = 100000;
         uint16 requestConfirmations = 5;

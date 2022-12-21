@@ -7,7 +7,7 @@ import { DormintPillowsGenesis } from './../typechain-types';
 describe("DormintPillowsGenesis", function () {
   async function prepare() {
     // Define signers
-    const [ owner, governor, buyer ] = await ethers.getSigners();
+    const [ owner, governor, buyerWhitelisted, buyerNotWhitelisted ] = await ethers.getSigners();
 
     // Define params
     const mintPrice = ethers.utils.parseEther("0.1");
@@ -31,11 +31,15 @@ describe("DormintPillowsGenesis", function () {
     ]));
     await nft.deployed();
 
+    // Fetch params
+    const DEFAULT_ADMIN_ROLE = await nft.DEFAULT_ADMIN_ROLE();
+
     return {
-      owner, governor, buyer,
+      owner, governor, buyerWhitelisted, buyerNotWhitelisted,
       mintPrice,
       mockToken, mockVRFWrapper,
-      nft
+      nft,
+      DEFAULT_ADMIN_ROLE
     };
   }
 
@@ -44,10 +48,9 @@ describe("DormintPillowsGenesis", function () {
       const {
         owner, governor,
         mintPrice,
-        nft
+        nft,
+        DEFAULT_ADMIN_ROLE
       } = await loadFixture(prepare);
-
-      const DEFAULT_ADMIN_ROLE = await nft.DEFAULT_ADMIN_ROLE();
 
       expect(await nft.name()).to.equal("Dormint Pillows Genesis");
       expect(await nft.symbol()).to.equal("DPG");
@@ -59,23 +62,77 @@ describe("DormintPillowsGenesis", function () {
       expect(await nft.hasRole(DEFAULT_ADMIN_ROLE, owner.address)).to.equal(false);
 
       expect(await nft.mintPrice()).to.equal(mintPrice);
+
+      expect(await nft.whitelistOnly()).to.be.equal(true);
     });
   });
 
   describe("Mint", function () {
     it("Should correctly mint", async function () {
       const {
-        buyer,
+        governor, buyerWhitelisted,
         mintPrice,
         nft
       } = await loadFixture(prepare);
 
-      const quantity = 2;
-      await nft.connect(buyer).mint(buyer.address, quantity, { value: mintPrice.mul(quantity) });
+      await nft.connect(governor).addWhitelisted([ buyerWhitelisted.address ]);
 
-      expect(await nft.balanceOf(buyer.address)).to.equal(quantity);
-      expect(await nft.ownerOf(1)).to.equal(buyer.address);
-      expect(await nft.ownerOf(2)).to.equal(buyer.address);
+      const quantity = 2;
+      await nft.connect(buyerWhitelisted).mint(buyerWhitelisted.address, quantity, { value: mintPrice.mul(quantity) });
+
+      expect(await nft.balanceOf(buyerWhitelisted.address)).to.equal(quantity);
+      expect(await nft.ownerOf(1)).to.equal(buyerWhitelisted.address);
+      expect(await nft.ownerOf(2)).to.equal(buyerWhitelisted.address);
+      expect(await nft.tokenURI(1)).to.equal("https://api.dormint.io/genesis/1");
+      expect(await nft.tokenURI(2)).to.equal("https://api.dormint.io/genesis/2");
+    });
+  });
+
+  describe("Whitelists", function () {
+    it("Should correctly work", async function () {
+      const {
+        owner, governor, buyerWhitelisted, buyerNotWhitelisted,
+        mintPrice,
+        nft,
+        DEFAULT_ADMIN_ROLE
+      } = await loadFixture(prepare);
+
+      // Test access reverts on addition and removal by non-governor
+      await expect(
+        nft.connect(owner).addWhitelisted([ ethers.constants.AddressZero ])
+      ).to.be.revertedWith(`AccessControl: account ${owner.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`);
+
+      await expect(
+        nft.connect(owner).removeWhitelisted([ ethers.constants.AddressZero ])
+      ).to.be.revertedWith(`AccessControl: account ${owner.address.toLowerCase()} is missing role ${DEFAULT_ADMIN_ROLE}`);
+
+      // Test logic on addition and removal
+      await nft.connect(governor).addWhitelisted([ buyerWhitelisted.address, buyerNotWhitelisted.address ])
+      
+      expect(await nft.isWhitelisted(buyerWhitelisted.address)).to.equal(true);
+      expect(await nft.isWhitelisted(buyerNotWhitelisted.address)).to.equal(true);
+      expect(await nft.isWhitelisted(governor.address)).to.equal(false);
+
+      await nft.connect(governor).removeWhitelisted([ buyerNotWhitelisted.address ]);
+
+      expect(await nft.isWhitelisted(buyerNotWhitelisted.address)).to.equal(false);
+
+      // Test mint by whitelisted and revert buy not whitelisted
+      const quantity = 2;
+      await nft.connect(buyerWhitelisted).mint(buyerWhitelisted.address, quantity, { value: mintPrice.mul(quantity) });
+      expect(await nft.balanceOf(buyerWhitelisted.address)).to.equal(quantity);
+
+      await expect(
+        nft.connect(buyerNotWhitelisted).mint(buyerNotWhitelisted.address, quantity, { value: mintPrice.mul(quantity) })
+      ).to.be.revertedWith("Only whitelisted mint allowed now");
+
+
+      // Test removal of whitelists;
+      await nft.connect(governor).setWhitelistOnly(false);
+      expect(await nft.whitelistOnly()).to.be.equal(false);
+
+      await nft.connect(buyerNotWhitelisted).mint(buyerNotWhitelisted.address, quantity, { value: mintPrice.mul(quantity) });
+      expect(await nft.balanceOf(buyerNotWhitelisted.address)).to.equal(quantity);
     });
   });
 
