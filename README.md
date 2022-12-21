@@ -3,7 +3,7 @@
 ## TODO
 - [x] Whitelist functionality
 - [x] VRF request + response (compatible with upgradeability)
-- [ ] Traits reveal
+- [x] Traits reveal
 - [ ] Tests
 - [ ] Final review (impl + tests)
 - [ ] Deployment script

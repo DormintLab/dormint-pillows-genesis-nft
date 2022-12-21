@@ -19,6 +19,25 @@ contract DormintPillowsGenesis is Initializable, ERC721Upgradeable, ERC721Enumer
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
 
+    /** ENUMs & STRUCTs */
+    enum PillowMouth { Happy, Confused, Sleepy, ExtremelyHappy, Neutral, Yawning, Satisfied, Surprised }
+    enum PillowEyes { Happy, Confused, Sleepy, Closed, HalfAwake, Suspicious, Reflective, Winking }
+    enum PillowPattern { XmasTrees, Leaves, Fishes, Cats, Owls, GeometricShapes, Giraffes, Bears }
+    enum PillowRarity { Common, Uncommon, Rare, Epic, Legendary }
+    enum PillowShape { Square, Circle, Triangle }
+    enum PillowPompom { None, Type1, Type2, Type3 }
+    enum PillowAnimal { None, Cat, Dog, Bird, Panda, Zebra }
+
+    struct PillowTraits {
+        PillowMouth mouth;
+        PillowEyes eyes;
+        PillowPattern pattern;
+        PillowRarity rarity;
+        PillowShape shape;
+        PillowPompom pompom;
+        PillowAnimal animal;
+    }
+
     /** CONSTANTS */
     uint256 public constant ROYALTY_FEE_BASE = 10000;
     uint256 public constant ROYALTY_FEE_MAX = 1000;
@@ -83,6 +102,109 @@ contract DormintPillowsGenesis is Initializable, ERC721Upgradeable, ERC721Enumer
 
     function isWhitelisted(address user_) external view returns (bool) {
         return _whitelisted.contains(user_);
+    }
+
+    function getTraits(uint256 tokenId_) external view returns (bool available, PillowTraits memory traits) {
+        traits = PillowTraits(
+            PillowMouth(0),
+            PillowEyes(0),
+            PillowPattern(0),
+            PillowRarity(0),
+            PillowShape(0),
+            PillowPompom(0),
+            PillowAnimal(0)
+        );
+
+        // If token doesn't exist, or there is no provided randomness, return unavailable traits
+        if (!_exists(tokenId_) || randomWord == 0) {
+            return (false, traits);
+        }
+
+        available = true;
+
+        uint256 probabilityBase = 100;
+
+        /** RARITY */
+        // Rarity probability: 60%, 20%, 10%, 7%, 3%
+        uint8[5] memory rarityProbability = [0, 60, 80, 90, 97];
+
+        uint256 randomWordByTokenId = uint256(keccak256(abi.encodePacked(randomWord, tokenId_)));
+
+        uint256 rarityRandom = randomWordByTokenId % probabilityBase;
+        {
+            // Default rarity: Legendary
+            uint256 rarityIndex = uint256(PillowRarity.Legendary);
+            // Check rarityRandom against probability and assign rarity index
+            for (uint256 i = 0; i < rarityProbability.length - 1; i++) {
+                if (rarityProbability[i] <= rarityRandom && rarityRandom < rarityProbability[i + 1]) {
+                    rarityIndex = i;
+                    break;
+                }
+            }
+
+            traits.rarity = PillowRarity(rarityIndex);
+        }
+
+        /** MOUTH */
+        // Offset random word
+        randomWordByTokenId = randomWordByTokenId / probabilityBase;
+        probabilityBase = uint8(PillowMouth.Surprised) + 1;
+        {
+            uint256 mouthIndex = randomWordByTokenId % probabilityBase;
+            traits.mouth = PillowMouth(mouthIndex);
+        }
+
+        /** EYES */
+        // Offset random word
+        randomWordByTokenId = randomWordByTokenId / probabilityBase;
+        probabilityBase = uint8(PillowEyes.Winking) + 1;
+        {
+            uint256 eyesIndex = randomWordByTokenId % probabilityBase;
+            traits.eyes = PillowEyes(eyesIndex);
+        }
+
+        /** PATTERN */
+        // Offset random word
+        randomWordByTokenId = randomWordByTokenId / probabilityBase;
+        probabilityBase = uint8(PillowPattern.Bears) + 1;
+        {
+            uint256 patternIndex = randomWordByTokenId % probabilityBase;
+            traits.pattern = PillowPattern(patternIndex);
+        }
+
+        /** SHAPE */
+        // Offset random word
+        randomWordByTokenId = randomWordByTokenId / probabilityBase;
+        probabilityBase = uint8(PillowShape.Triangle) + 1;
+        {
+            uint256 shapeIndex = randomWordByTokenId % probabilityBase;
+            traits.shape = PillowShape(shapeIndex);
+        }
+
+        /** POMPOM */
+        // Offset random word
+        randomWordByTokenId = randomWordByTokenId / probabilityBase;
+        probabilityBase = uint8(PillowPompom.Type3);
+        if (
+            traits.rarity == PillowRarity.Rare ||
+            traits.rarity == PillowRarity.Epic ||
+            traits.rarity == PillowRarity.Legendary
+        ) {
+            uint256 pompomIndex = randomWordByTokenId % probabilityBase;
+            traits.pompom = PillowPompom(pompomIndex + 1);
+        }
+
+        /** ANIMAL */
+        // Offset random word
+        randomWordByTokenId = randomWordByTokenId / probabilityBase;
+        probabilityBase = uint8(PillowAnimal.Zebra);
+        if (
+            traits.rarity == PillowRarity.Epic ||
+            traits.rarity == PillowRarity.Legendary
+        ) {
+            uint256 animalIndex = randomWordByTokenId % probabilityBase;
+            traits.animal = PillowAnimal(animalIndex + 1);
+        }
     }
 
     /** PUBLIC / EXTERNAL SETTERS */
