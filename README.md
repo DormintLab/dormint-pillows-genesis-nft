@@ -1,7 +1,7 @@
 # Dormint Pillows Genesis
 
 ## TODO
-- [ ] Whitelist functionality
+- [x] Whitelist functionality
 - [x] VRF request + response (compatible with upgradeability)
 - [ ] Traits reveal
 - [ ] Tests
