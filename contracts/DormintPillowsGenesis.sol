@@ -292,6 +292,7 @@ contract DormintPillowsGenesis is Initializable, ERC721Upgradeable, ERC721Enumer
         return baseURI;
     }
 
+    /** PRIVATE / INTERNAL SETTERS */
     function _beforeTokenTransfer(address from, address to, uint256 tokenId, uint256 batchSize)
         internal
         override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
@@ -302,6 +303,4 @@ contract DormintPillowsGenesis is Initializable, ERC721Upgradeable, ERC721Enumer
     function _burn(uint256 tokenId) internal virtual override(ERC721Upgradeable, ERC721RoyaltyUpgradeable) {
         super._burn(tokenId);
     }
-
-    /** PRIVATE / INTERNAL SETTERS */
 }
