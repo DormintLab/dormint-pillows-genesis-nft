@@ -1,6 +1,6 @@
 import { DormintPillowsTraits } from "../typechain-types";
 
-type Output = {
+type Traits = {
   mouth: number
   eyes: number
   pattern: number
@@ -8,16 +8,6 @@ type Output = {
   shape: number
   pompom: number
   animal: number
-}
-
-export const reverseMap = {
-  mouth: [ 'Happy', 'Confused', 'Sleepy', 'ExtremelyHappy', 'Neutral', 'Yawning', 'Satisfied', 'Surprised' ],
-  eyes: [ 'Happy', 'Confused', 'Sleepy', 'Closed', 'HalfAwake', 'Suspicious', 'Reflective', 'Winking' ],
-  pattern: [ 'XmasTrees', 'Leaves', 'Fishes', 'Cats', 'Owls', 'GeometricShapes', 'Giraffes', 'Bears' ],
-  rarity: [ 'Common', 'Uncommon', 'Rare', 'Epic', 'Legendary' ],
-  shape: [ 'Square', 'Circle', 'Triangle' ],
-  pompom: [ 'None', 'Type1', 'Type2', 'Type3' ],
-  animal: [ 'None', 'Cat', 'Dog', 'Bird', 'Panda', 'Zebra' ]
 }
 
 export const getTokensRangeTraitsMap = async (
@@ -37,10 +27,21 @@ export const getTokensRangeTraitsMap = async (
   const traits = await Promise.all(
     Array
       .from({ length: toTokenId - fromTokenId + 1 }, (_, i) => i)
-      .map(async tokenId => ({
-        tokenId,
-        data: (await traitsInstance.getTraits(tokenId)).traits as Output
-      }))
+      .map(async tokenId => {
+        const { traits } = await traitsInstance.getTraits(tokenId)
+        return {
+          tokenId,
+          data: {
+            mouth: traits.mouth,
+            eyes: traits.eyes,
+            pattern: traits.pattern,
+            rarity: traits.rarity,
+            shape: traits.shape,
+            pompom: traits.pompom,
+            animal: traits.animal,
+          } as Traits
+        }
+      })
   )
 
   return traits
