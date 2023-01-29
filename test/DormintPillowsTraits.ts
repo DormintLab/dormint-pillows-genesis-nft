@@ -4,6 +4,8 @@ import { ethers, upgrades } from "hardhat";
 
 import { DormintPillowsTraits } from "../typechain-types";
 
+import { getTokensRangeTraitsMap } from "./mixins";
+
 describe("DormintPillowsTraits", function () {
   async function prepare() {
     // Define signers
@@ -99,13 +101,8 @@ describe("DormintPillowsTraits", function () {
 
       const totalQuantity = 1000
 
-      const traits = await Promise.all(
-        Array
-          .from({ length: totalQuantity }, (_, i) => i + 1)
-          .map(tokenId => traitsContract.getTraits(tokenId))
-      )
+      const traitsMap = await getTokensRangeTraitsMap(traitsContract, 0, 999);
 
-      let availableCount = 0
       const mouthCount: { [key: number]: number } = {}
       const eyesCount: { [key: number]: number } = {}
       const patternCount: { [key: number]: number } = {}
@@ -113,66 +110,59 @@ describe("DormintPillowsTraits", function () {
       const shapeCount: { [key: number]: number } = {}
       const pompomCount: { [key: number]: number } = {}
       const animalCount: { [key: number]: number } = {}
-      for (const trait of traits) {
-        if (trait.available) {
-          availableCount++
+      for (const trait of traitsMap) {
+        if (!mouthCount[trait.data.mouth]) {
+          mouthCount[trait.data.mouth] = 1
+        } else {
+          mouthCount[trait.data.mouth] += 1
         }
 
-        if (!mouthCount[trait.traits.mouth]) {
-          mouthCount[trait.traits.mouth] = 1
+        if (!eyesCount[trait.data.eyes]) {
+          eyesCount[trait.data.eyes] = 1
         } else {
-          mouthCount[trait.traits.mouth] += 1
+          eyesCount[trait.data.eyes] += 1
         }
 
-        if (!eyesCount[trait.traits.eyes]) {
-          eyesCount[trait.traits.eyes] = 1
+        if (!patternCount[trait.data.pattern]) {
+          patternCount[trait.data.pattern] = 1
         } else {
-          eyesCount[trait.traits.eyes] += 1
+          patternCount[trait.data.pattern] += 1
         }
 
-        if (!patternCount[trait.traits.pattern]) {
-          patternCount[trait.traits.pattern] = 1
+        if (!rarityCount[trait.data.rarity]) {
+          rarityCount[trait.data.rarity] = 1
         } else {
-          patternCount[trait.traits.pattern] += 1
+          rarityCount[trait.data.rarity] += 1
         }
 
-        if (!rarityCount[trait.traits.rarity]) {
-          rarityCount[trait.traits.rarity] = 1
+        if (!shapeCount[trait.data.shape]) {
+          shapeCount[trait.data.shape] = 1
         } else {
-          rarityCount[trait.traits.rarity] += 1
+          shapeCount[trait.data.shape] += 1
         }
 
-        if (!shapeCount[trait.traits.shape]) {
-          shapeCount[trait.traits.shape] = 1
+        if (!pompomCount[trait.data.pompom]) {
+          pompomCount[trait.data.pompom] = 1
         } else {
-          shapeCount[trait.traits.shape] += 1
-        }
-
-        if (!pompomCount[trait.traits.pompom]) {
-          pompomCount[trait.traits.pompom] = 1
-        } else {
-          pompomCount[trait.traits.pompom] += 1
+          pompomCount[trait.data.pompom] += 1
         }
 
         // Pompom rules check
-        if (trait.traits.pompom != 0 && ![2, 3, 4].includes(trait.traits.rarity)) {
+        if (trait.data.pompom != 0 && ![2, 3, 4].includes(trait.data.rarity)) {
           throw Error('Pompom not allowed')
         }
 
-        if (!animalCount[trait.traits.animal]) {
-          animalCount[trait.traits.animal] = 1
+        if (!animalCount[trait.data.animal]) {
+          animalCount[trait.data.animal] = 1
         } else {
-          animalCount[trait.traits.animal] += 1
+          animalCount[trait.data.animal] += 1
         }
 
         // Animal rules check
-        if (trait.traits.animal != 0 && ![3, 4].includes(trait.traits.rarity)) {
+        if (trait.data.animal != 0 && ![3, 4].includes(trait.data.rarity)) {
           throw Error('Animal not allowed')
         }
       }
-      
-      console.log(`Total available: ${availableCount}`)
-      console.log()
 
       /** Mouth */
       const mouth_happy = mouthCount[0];
