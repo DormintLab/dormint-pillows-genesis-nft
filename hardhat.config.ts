@@ -1,4 +1,6 @@
 import { HardhatUserConfig } from "hardhat/config";
+import 'hardhat-deploy'
+import '@nomiclabs/hardhat-ethers';
 import "@nomicfoundation/hardhat-toolbox";
 import "@openzeppelin/hardhat-upgrades";
 
@@ -11,6 +13,9 @@ const config: HardhatUserConfig = {
         runs: 200,
       },
     },
+  },
+  namedAccounts: {
+    deployer: 0,
   },
 };
 
