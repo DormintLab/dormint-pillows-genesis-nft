@@ -13,9 +13,9 @@
 - [ ] Mainnet deployment
 
 ## Traits Contract TODO
-- [ ] VRF request + response (compatible with upgradeability)
-- [ ] Traits reveal
-- [ ] Tests
+- [x] VRF request + response (compatible with upgradeability)
+- [x] Traits reveal
+- [x] Tests
 - [ ] Deployment script
 - [ ] Testnet deployment
 - [ ] Mainnet deployment
