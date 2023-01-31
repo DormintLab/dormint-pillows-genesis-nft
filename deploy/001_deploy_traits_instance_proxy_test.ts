@@ -1,32 +1,38 @@
 
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { ethers } from "hardhat";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployments, getNamedAccounts } = hre;
+  const { deployments, getNamedAccounts, network } = hre;
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
-  const mockToken = await ethers.getContract('MockLinkToken')
-  const mockVRFWrapper = await ethers.getContract('MockVRFV2Wrapper')
-  await deploy("DormintPillowsTraits", {
+
+  if (network.name !== 'polygon') {
+    return
+  }
+
+  const LINK_ADDRESS = "0xb0897686c545045aFc77CF20eC7A532E3120E0F1";
+  const VRF_WRAPPER_ADDRESS = "0x4e42f0adEB69203ef7AaA4B7c414e5b1331c14dc";
+
+  const deployResult = await deploy("DormintPillowsTraits", {
     from: deployer,
     proxy: {
-      owner: deployer,
       proxyContract: "OpenZeppelinTransparentProxy",
       execute: {
         init: {
           methodName: "initialize",
-          args: [mockToken.address, mockVRFWrapper.address],
+          args: [LINK_ADDRESS, VRF_WRAPPER_ADDRESS],
         },
       },
     },
-    args: [],
     log: true,
-    autoMine: true,
   });
+
+  console.log(`✓ DormintPillowsTraits Deployed at ${deployResult.address}`);
+
+  return true;
 };
 export default func;
+func.id = "001";
 func.tags = ["DormintPillowsTraits"];
-func.dependencies = ["MockLinkToken", "MockVRFV2Wrapper"];

@@ -16,6 +16,6 @@
 - [x] VRF request + response (compatible with upgradeability)
 - [x] Traits reveal
 - [x] Tests
-- [ ] Deployment script
-- [ ] Testnet deployment
+- [x] Deployment script
+- [x] Testnet deployment
 - [ ] Mainnet deployment
