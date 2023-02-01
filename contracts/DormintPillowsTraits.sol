@@ -52,7 +52,7 @@ contract DormintPillowsTraits is Initializable, OwnableUpgradeable {
     /** PUBLIC SETTERS */
     function requestRandomness() external onlyOwner {
         require(randomWord == 0, "Randomness was already persisted");
-        uint32 callbackGasLimit = 100000;
+        uint32 callbackGasLimit = 300000;
         uint16 requestConfirmations = 5;
         uint32 numWords = 1;
         LINK.transferAndCall(

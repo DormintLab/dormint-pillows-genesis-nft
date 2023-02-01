@@ -80,7 +80,7 @@ task("maintenance:requestRandomness")
 
     await new Promise(resolve => setTimeout(resolve, 3000))
 
-    await (await instance.connect(deployer).requestRandomness()).wait();
+    await (await instance.connect(deployer).requestRandomness({ gasLimit: 300000 })).wait();
 
     console.log("Randomness requested");
   });
